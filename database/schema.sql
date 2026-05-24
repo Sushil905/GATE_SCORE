@@ -4,343 +4,465 @@ CREATE DATABASE IF NOT EXISTS gate_score
 
 USE gate_score;
 
-CREATE TABLE IF NOT EXISTS users (
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS activity_logs;
+DROP TABLE IF EXISTS bookmarks;
+DROP TABLE IF EXISTS user_progress;
+DROP TABLE IF EXISTS ai_study_plans;
+DROP TABLE IF EXISTS ai_chat_history;
+DROP TABLE IF EXISTS student_answers;
+DROP TABLE IF EXISTS test_attempts;
+DROP TABLE IF EXISTS questions;
+DROP TABLE IF EXISTS tests;
+DROP TABLE IF EXISTS resources;
+DROP TABLE IF EXISTS topics;
+DROP TABLE IF EXISTS subjects;
+DROP TABLE IF EXISTS branches;
+DROP TABLE IF EXISTS activity_events;
+DROP TABLE IF EXISTS announcements;
+DROP TABLE IF EXISTS doubt_threads;
+DROP TABLE IF EXISTS study_tasks;
+DROP TABLE IF EXISTS study_plans;
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS test_questions;
+DROP TABLE IF EXISTS lesson_progress;
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS lessons;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS programs;
+DROP TABLE IF EXISTS users;
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE IF NOT EXISTS branches (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(120) NOT NULL,
-  email VARCHAR(160) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  role ENUM('student', 'mentor', 'admin') DEFAULT 'student',
-  phone VARCHAR(30) NULL,
-  avatar_url VARCHAR(500) NULL,
-  branch VARCHAR(120) DEFAULT 'Computer Science',
-  college VARCHAR(180) NULL,
-  target_exam_date DATE NULL,
-  target_score DECIMAL(5,2) DEFAULT 75.00,
-  study_hours_per_day DECIMAL(4,2) DEFAULT 4.00,
-  status ENUM('active', 'inactive', 'blocked') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  branch_name VARCHAR(120) NOT NULL,
+  branch_code VARCHAR(30) NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS programs (
+CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  code VARCHAR(40) NOT NULL UNIQUE,
-  name VARCHAR(160) NOT NULL,
-  description TEXT,
-  exam_year INT NOT NULL,
-  starts_on DATE NULL,
-  ends_on DATE NULL,
-  status ENUM('draft', 'active', 'archived') DEFAULT 'active',
+  full_name VARCHAR(120) NOT NULL,
+  email VARCHAR(160) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  phone VARCHAR(30) NULL,
+  role ENUM('student', 'mentor', 'admin') DEFAULT 'student',
+  branch VARCHAR(120) DEFAULT 'Computer Science',
+  target_year INT DEFAULT 2027,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS subjects (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  program_id INT NULL,
-  name VARCHAR(120) NOT NULL,
-  code VARCHAR(40) NOT NULL,
-  weightage_percent DECIMAL(5,2) DEFAULT 0,
-  display_order INT DEFAULT 0,
-  UNIQUE KEY uq_subject_code (program_id, code),
-  FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+  branch_id INT NOT NULL,
+  subject_name VARCHAR(120) NOT NULL,
+  description TEXT NULL,
+  FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS topics (
   id INT AUTO_INCREMENT PRIMARY KEY,
   subject_id INT NOT NULL,
-  name VARCHAR(160) NOT NULL,
-  slug VARCHAR(180) NOT NULL,
-  difficulty ENUM('foundation', 'easy', 'medium', 'hard') DEFAULT 'medium',
-  expected_hours DECIMAL(5,2) DEFAULT 2.00,
-  display_order INT DEFAULT 0,
-  UNIQUE KEY uq_topic_slug (subject_id, slug),
+  topic_name VARCHAR(160) NOT NULL,
+  difficulty ENUM('easy', 'medium', 'hard') DEFAULT 'medium',
   FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS courses (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  program_id INT NULL,
-  title VARCHAR(180) NOT NULL,
-  subtitle VARCHAR(220) NULL,
-  description TEXT,
-  level ENUM('foundation', 'intermediate', 'advanced') DEFAULT 'foundation',
-  thumbnail_url VARCHAR(500) NULL,
-  is_published BOOLEAN DEFAULT TRUE,
-  created_by INT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE SET NULL,
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS lessons (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  course_id INT NOT NULL,
-  topic_id INT NULL,
-  title VARCHAR(180) NOT NULL,
-  lesson_type ENUM('video', 'reading', 'practice', 'quiz', 'live_class') DEFAULT 'reading',
-  content_url VARCHAR(500) NULL,
-  content_text MEDIUMTEXT NULL,
-  duration_minutes INT DEFAULT 20,
-  display_order INT DEFAULT 0,
-  is_free BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
-  FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS enrollments (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  course_id INT NOT NULL,
-  status ENUM('active', 'completed', 'paused') DEFAULT 'active',
-  progress_percent DECIMAL(5,2) DEFAULT 0,
-  enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  completed_at TIMESTAMP NULL,
-  UNIQUE KEY uq_enrollment (user_id, course_id),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS lesson_progress (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  lesson_id INT NOT NULL,
-  status ENUM('not_started', 'in_progress', 'completed') DEFAULT 'not_started',
-  time_spent_minutes INT DEFAULT 0,
-  completed_at TIMESTAMP NULL,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_lesson_progress (user_id, lesson_id),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS resources (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  subject VARCHAR(100) NOT NULL,
+  subject_id INT NOT NULL,
   topic_id INT NULL,
   title VARCHAR(180) NOT NULL,
-  description TEXT NULL,
-  type ENUM('pdf', 'video', 'article', 'notes', 'practice', 'book') DEFAULT 'notes',
-  url VARCHAR(500) NOT NULL,
-  difficulty ENUM('beginner', 'intermediate', 'advanced') DEFAULT 'beginner',
-  provider VARCHAR(120) DEFAULT 'GATE_SCORE',
-  estimated_minutes INT DEFAULT 30,
-  is_premium BOOLEAN DEFAULT FALSE,
+  resource_type ENUM('pdf', 'video', 'article', 'notes', 'practice', 'book') DEFAULT 'notes',
+  resource_url VARCHAR(500) NOT NULL,
+  is_free BOOLEAN DEFAULT TRUE,
   uploaded_by INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
   FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL,
   FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS questions (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  subject VARCHAR(100) NOT NULL,
-  topic VARCHAR(140) NOT NULL,
-  topic_id INT NULL,
-  question_text TEXT NOT NULL,
-  option_a VARCHAR(500) NOT NULL,
-  option_b VARCHAR(500) NOT NULL,
-  option_c VARCHAR(500) NOT NULL,
-  option_d VARCHAR(500) NOT NULL,
-  correct_option CHAR(1) NOT NULL,
-  explanation TEXT,
-  difficulty ENUM('easy', 'medium', 'hard') DEFAULT 'medium',
-  marks DECIMAL(4,2) DEFAULT 1,
-  negative_marks DECIMAL(4,2) DEFAULT 0,
-  source ENUM('mock', 'pyq', 'ai', 'practice') DEFAULT 'mock',
-  year INT NULL,
-  created_by INT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL,
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-);
-
 CREATE TABLE IF NOT EXISTS tests (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(180) NOT NULL,
-  subject VARCHAR(100) NOT NULL,
-  description TEXT NULL,
+  test_title VARCHAR(180) NOT NULL,
+  branch_id INT NOT NULL,
+  subject_id INT NULL,
   test_type ENUM('mini_mock', 'full_mock', 'sectional', 'pyq', 'practice') DEFAULT 'mini_mock',
   duration_minutes INT DEFAULT 60,
   total_marks DECIMAL(7,2) DEFAULT 0,
-  passing_score DECIMAL(7,2) DEFAULT 0,
-  is_published BOOLEAN DEFAULT TRUE,
   created_by INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+  FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE SET NULL,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS test_questions (
+CREATE TABLE IF NOT EXISTS questions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
   test_id INT NOT NULL,
-  question_id INT NOT NULL,
-  display_order INT DEFAULT 0,
-  PRIMARY KEY (test_id, question_id),
+  subject_id INT NOT NULL,
+  topic_id INT NULL,
+  question_text TEXT NOT NULL,
+  question_type ENUM('mcq', 'msq', 'nat') DEFAULT 'mcq',
+  option_a VARCHAR(500) NULL,
+  option_b VARCHAR(500) NULL,
+  option_c VARCHAR(500) NULL,
+  option_d VARCHAR(500) NULL,
+  correct_answer VARCHAR(100) NOT NULL,
+  explanation TEXT NULL,
+  marks DECIMAL(4,2) DEFAULT 1,
+  negative_marks DECIMAL(4,2) DEFAULT 0,
+  difficulty ENUM('easy', 'medium', 'hard') DEFAULT 'medium',
   FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE,
-  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+  FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+  FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS submissions (
+CREATE TABLE IF NOT EXISTS test_attempts (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   test_id INT NOT NULL,
   score DECIMAL(7,2) NOT NULL,
   total_marks DECIMAL(7,2) NOT NULL,
-  accuracy DECIMAL(5,2) NOT NULL,
+  correct_count INT DEFAULT 0,
+  wrong_count INT DEFAULT 0,
+  unattempted_count INT DEFAULT 0,
   time_taken_minutes INT DEFAULT 0,
-  weak_subjects JSON,
-  answers JSON NOT NULL,
-  review JSON NULL,
   submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS study_plans (
+CREATE TABLE IF NOT EXISTS student_answers (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  title VARCHAR(180) NOT NULL,
-  target_date DATE NOT NULL,
-  daily_hours DECIMAL(4,2) NOT NULL,
-  weak_subjects JSON NULL,
-  plan_json JSON NULL,
-  status ENUM('active', 'completed', 'archived') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  attempt_id INT NOT NULL,
+  question_id INT NOT NULL,
+  selected_answer VARCHAR(100) NULL,
+  is_correct BOOLEAN DEFAULT FALSE,
+  marks_obtained DECIMAL(5,2) DEFAULT 0,
+  FOREIGN KEY (attempt_id) REFERENCES test_attempts(id) ON DELETE CASCADE,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS study_tasks (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  study_plan_id INT NULL,
-  user_id INT NOT NULL,
-  subject_id INT NULL,
-  topic_id INT NULL,
-  title VARCHAR(180) NOT NULL,
-  task_type ENUM('lesson', 'revision', 'practice', 'mock', 'doubt') DEFAULT 'revision',
-  due_date DATE NULL,
-  estimated_minutes INT DEFAULT 45,
-  status ENUM('pending', 'in_progress', 'completed', 'skipped') DEFAULT 'pending',
-  completed_at TIMESTAMP NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (study_plan_id) REFERENCES study_plans(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE SET NULL,
-  FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS doubt_threads (
+CREATE TABLE IF NOT EXISTS ai_chat_history (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  subject VARCHAR(120) NULL,
-  topic VARCHAR(160) NULL,
   question TEXT NOT NULL,
-  ai_answer MEDIUMTEXT NULL,
-  status ENUM('open', 'resolved') DEFAULT 'open',
+  ai_response MEDIUMTEXT NOT NULL,
+  chat_type ENUM('doubt', 'questions', 'explanation', 'recommendation') DEFAULT 'doubt',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  resolved_at TIMESTAMP NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS announcements (
+CREATE TABLE IF NOT EXISTS ai_study_plans (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(180) NOT NULL,
-  body TEXT NOT NULL,
-  audience ENUM('all', 'students', 'mentors', 'admins') DEFAULT 'students',
-  published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  created_by INT NULL,
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+  user_id INT NOT NULL,
+  target_exam_date DATE NOT NULL,
+  daily_hours DECIMAL(4,2) NOT NULL,
+  weak_subjects TEXT NULL,
+  plan_text MEDIUMTEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS activity_events (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS user_progress (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  subject_id INT NOT NULL,
+  completed_topics INT DEFAULT 0,
+  total_topics INT DEFAULT 0,
+  progress_percentage DECIMAL(5,2) DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_user_subject_progress (user_id, subject_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS bookmarks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  resource_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_bookmark (user_id, resource_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
-  event_type VARCHAR(80) NOT NULL,
-  entity_type VARCHAR(80) NULL,
-  entity_id INT NULL,
-  metadata JSON NULL,
+  activity_type VARCHAR(80) NOT NULL,
+  activity_description TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-INSERT IGNORE INTO users (id, name, email, password_hash, role, branch, target_exam_date, target_score, study_hours_per_day) VALUES
-(1, 'Demo Student', 'student@gatescore.dev', '$2a$10$4497ZHiRUn6stQB/Dsegy.widX.i/cL8IEpcnTMGz2cb.ySLlsCCa', 'student', 'Computer Science', '2027-02-08', 75.00, 4.00),
-(2, 'Admin Mentor', 'admin@gatescore.dev', '$2a$10$JYgCgiFxp07D7lBufBNkvus1W271qK0LbsD4HRR2nx/qLsKHHFZKu', 'admin', 'Computer Science', NULL, 90.00, 6.00);
+INSERT IGNORE INTO branches (id, branch_name, branch_code) VALUES
+(1, 'Computer Science Engineering', 'CSE'),
+(2, 'Electronics & Communication Engineering', 'ECE'),
+(3, 'Electrical Engineering', 'EE'),
+(4, 'Mechanical Engineering', 'ME'),
+(5, 'Civil Engineering', 'CE'),
+(6, 'Instrumentation Engineering', 'IN'),
+(7, 'Chemical Engineering', 'CH'),
+(8, 'Aerospace Engineering', 'AE'),
+(9, 'Biotechnology', 'BT'),
+(10, 'Engineering Sciences', 'XE'),
+(11, 'Humanities & Social Sciences', 'XH'),
+(12, 'Data Science & Artificial Intelligence', 'DA'),
+(13, 'Mathematics', 'MA'),
+(14, 'Physics', 'PH'),
+(15, 'Statistics', 'ST'),
+(16, 'Architecture & Planning', 'AR'),
+(17, 'Ecology & Evolution', 'EY'),
+(18, 'Geomatics Engineering', 'GE'),
+(19, 'Mining Engineering', 'MN'),
+(20, 'Metallurgical Engineering', 'MT'),
+(21, 'Naval Architecture & Marine Engineering', 'NM'),
+(22, 'Petroleum Engineering', 'PE'),
+(23, 'Textile Engineering & Fibre Science', 'TF'),
+(24, 'Production & Industrial Engineering', 'PI'),
+(25, 'Life Sciences', 'XL'),
+(26, 'Environmental Science & Engineering', 'ES'),
+(27, 'Agricultural Engineering', 'AG'),
+(28, 'Biomedical Engineering', 'BM'),
+(29, 'Psychology', 'XH-C5');
 
-INSERT IGNORE INTO programs (id, code, name, description, exam_year, starts_on, ends_on) VALUES
-(1, 'GATE-CS-2027', 'GATE Computer Science 2027', 'Structured preparation path for GATE Computer Science with lessons, mocks, PYQs, resources, and analytics.', 2027, '2026-05-01', '2027-02-08');
+INSERT IGNORE INTO users (id, full_name, email, password, phone, role, branch, target_year) VALUES
+(1, 'Demo Student', 'student@gatescore.dev', '$2a$10$4497ZHiRUn6stQB/Dsegy.widX.i/cL8IEpcnTMGz2cb.ySLlsCCa', NULL, 'student', 'Computer Science Engineering', 2027),
+(2, 'Admin Mentor', 'admin@gatescore.dev', '$2a$10$JYgCgiFxp07D7lBufBNkvus1W271qK0LbsD4HRR2nx/qLsKHHFZKu', NULL, 'admin', 'Computer Science Engineering', 2027);
 
-INSERT IGNORE INTO subjects (id, program_id, name, code, weightage_percent, display_order) VALUES
-(1, 1, 'Engineering Mathematics', 'MATH', 13.00, 1),
-(2, 1, 'Algorithms', 'ALGO', 12.00, 2),
-(3, 1, 'Operating Systems', 'OS', 10.00, 3),
-(4, 1, 'Computer Networks', 'CN', 8.00, 4),
-(5, 1, 'Databases', 'DBMS', 8.00, 5),
-(6, 1, 'Theory of Computation', 'TOC', 8.00, 6),
-(7, 1, 'Computer Organization', 'COA', 9.00, 7),
-(8, 1, 'Digital Logic', 'DL', 6.00, 8);
+INSERT IGNORE INTO subjects (id, branch_id, subject_name, description) VALUES
+(1, 1, 'Engineering Mathematics', 'Core mathematics for GATE CSE preparation.'),
+(2, 1, 'Digital Logic', 'Boolean algebra, gates, combinational and sequential circuits.'),
+(3, 1, 'Computer Organization & Architecture', 'Processor, memory, instruction pipeline, and computer architecture.'),
+(4, 1, 'Programming & Data Structures', 'Programming fundamentals and core data structures.'),
+(5, 1, 'Algorithms', 'Design, analysis, searching, sorting, graphs, and dynamic programming.'),
+(6, 1, 'Theory of Computation', 'Automata, languages, grammars, and computability.'),
+(7, 1, 'Compiler Design', 'Lexical analysis, parsing, syntax-directed translation, and optimization.'),
+(8, 1, 'Operating Systems', 'Processes, scheduling, synchronization, memory, and file systems.'),
+(9, 1, 'DBMS', 'SQL, normalization, transactions, indexing, and relational algebra.'),
+(10, 1, 'Computer Networks', 'Network layers, TCP/IP, routing, congestion, and application protocols.'),
+(11, 1, 'Software Engineering', 'Software process, design, testing, and maintenance.'),
+(12, 1, 'AI', 'Search, reasoning, planning, and intelligent systems.'),
+(13, 1, 'ML', 'Machine learning concepts, models, and evaluation.'),
+(14, 1, 'Cyber Security', 'Security fundamentals, cryptography, and network security.'),
+(15, 2, 'Engineering Mathematics', 'Mathematics for ECE.'),
+(16, 2, 'Networks', 'Circuit and network analysis.'),
+(17, 2, 'Signals & Systems', 'Continuous and discrete signals and systems.'),
+(18, 2, 'Analog Circuits', 'Diodes, transistors, amplifiers, and analog electronics.'),
+(19, 2, 'Digital Circuits', 'Digital logic and sequential systems.'),
+(20, 2, 'Control Systems', 'Feedback, stability, and control analysis.'),
+(21, 2, 'Communication Systems', 'Analog and digital communication.'),
+(22, 2, 'Electromagnetics', 'Fields, waves, and electromagnetic theory.'),
+(23, 2, 'Microprocessors', 'Microprocessor architecture and interfacing.'),
+(24, 2, 'VLSI', 'CMOS and VLSI design basics.'),
+(25, 2, 'Embedded Systems', 'Embedded hardware, software, and real-time systems.'),
+(26, 3, 'Engineering Mathematics', 'Mathematics for EE.'),
+(27, 3, 'Electric Circuits', 'Circuit laws, network theorems, and AC/DC circuits.'),
+(28, 3, 'Signals & Systems', 'Signal representation and system analysis.'),
+(29, 3, 'Electrical Machines', 'Transformers, DC machines, induction and synchronous machines.'),
+(30, 3, 'Power Systems', 'Generation, transmission, distribution, and fault analysis.'),
+(31, 3, 'Control Systems', 'Control theory and stability.'),
+(32, 3, 'Power Electronics', 'Converters, inverters, and drives.'),
+(33, 3, 'Measurements', 'Electrical measurements and instrumentation.'),
+(34, 3, 'Electromagnetic Fields', 'Electric and magnetic field theory.'),
+(35, 4, 'Engineering Mathematics', 'Mathematics for ME.'),
+(36, 4, 'Engineering Mechanics', 'Statics and dynamics.'),
+(37, 4, 'Strength of Materials', 'Stress, strain, bending, torsion, and failure.'),
+(38, 4, 'Thermodynamics', 'Laws, cycles, and properties.'),
+(39, 4, 'Fluid Mechanics', 'Fluid statics and dynamics.'),
+(40, 4, 'Heat Transfer', 'Conduction, convection, and radiation.'),
+(41, 4, 'Manufacturing Engineering', 'Casting, forming, machining, and joining.'),
+(42, 4, 'Machine Design', 'Design of machine elements.'),
+(43, 4, 'Industrial Engineering', 'Operations, work study, and optimization.'),
+(44, 5, 'Engineering Mathematics', 'Mathematics for CE.'),
+(45, 5, 'Structural Engineering', 'Analysis and design of structures.'),
+(46, 5, 'Geotechnical Engineering', 'Soil mechanics and foundation engineering.'),
+(47, 5, 'Transportation Engineering', 'Highways, traffic, and transportation systems.'),
+(48, 5, 'Environmental Engineering', 'Water, wastewater, and pollution control.'),
+(49, 5, 'Fluid Mechanics', 'Hydraulics and fluid flow.'),
+(50, 5, 'Surveying', 'Survey methods, leveling, and measurements.'),
+(51, 5, 'Hydrology', 'Rainfall, runoff, and water resources.'),
+(52, 6, 'Analog Electronics', 'Analog circuits and devices.'),
+(53, 6, 'Digital Electronics', 'Digital logic and electronics.'),
+(54, 6, 'Control Systems', 'Control theory for instrumentation.'),
+(55, 6, 'Sensors & Transducers', 'Measurement sensors and transducers.'),
+(56, 6, 'Signals & Systems', 'Signal analysis and systems.'),
+(57, 6, 'Communication Systems', 'Communication fundamentals.'),
+(58, 6, 'Process Control', 'Industrial and process control systems.'),
+(59, 7, 'Process Calculations', 'Material and energy balances.'),
+(60, 7, 'Fluid Mechanics', 'Fluid flow in chemical processes.'),
+(61, 7, 'Heat Transfer', 'Heat transfer operations.'),
+(62, 7, 'Mass Transfer', 'Separation and mass transfer.'),
+(63, 7, 'Thermodynamics', 'Chemical engineering thermodynamics.'),
+(64, 7, 'Chemical Reaction Engineering', 'Reaction kinetics and reactor design.'),
+(65, 7, 'Plant Design', 'Process plant design and economics.'),
+(66, 8, 'Flight Mechanics', 'Aircraft motion and performance.'),
+(67, 8, 'Aerodynamics', 'Airflow and aerodynamic forces.'),
+(68, 8, 'Aircraft Structures', 'Aircraft structural analysis.'),
+(69, 8, 'Propulsion', 'Aircraft and rocket propulsion.'),
+(70, 8, 'Thermodynamics', 'Thermodynamics for aerospace systems.'),
+(71, 8, 'Fluid Mechanics', 'Fluid dynamics for aerospace.'),
+(72, 8, 'Space Dynamics', 'Orbital mechanics and spacecraft dynamics.'),
+(73, 9, 'Biochemistry', 'Biomolecules and biochemical pathways.'),
+(74, 9, 'Microbiology', 'Microorganisms and applications.'),
+(75, 9, 'Genetics', 'Genetic principles and molecular genetics.'),
+(76, 9, 'Cell Biology', 'Cell structure and function.'),
+(77, 9, 'Immunology', 'Immune system and response.'),
+(78, 9, 'Bioinformatics', 'Computational biology and sequence analysis.'),
+(79, 9, 'Bioprocess Engineering', 'Bioprocess design and operations.'),
+(80, 10, 'Engineering Mathematics', 'Mathematics for engineering sciences.'),
+(81, 10, 'Fluid Mechanics', 'Fluid mechanics for XE.'),
+(82, 10, 'Materials Science', 'Materials and properties.'),
+(83, 10, 'Solid Mechanics', 'Mechanics of solids.'),
+(84, 10, 'Thermodynamics', 'Thermodynamics for XE.'),
+(85, 10, 'Polymer Science', 'Polymer structure and behavior.'),
+(86, 11, 'English', 'Language and literature.'),
+(87, 11, 'Communication', 'Communication skills and theory.'),
+(88, 11, 'Reasoning', 'Logical and analytical reasoning.'),
+(89, 11, 'Psychology', 'Psychology fundamentals.'),
+(90, 11, 'Economics', 'Micro and macro economics.'),
+(91, 11, 'Sociology', 'Society, culture, and institutions.'),
+(92, 11, 'Philosophy', 'Philosophy and critical thought.'),
+(93, 12, 'Probability & Statistics', 'Probability, statistics, and inference.'),
+(94, 12, 'Programming', 'Programming for data science.'),
+(95, 12, 'Data Structures', 'Data structures for AI and data science.'),
+(96, 12, 'Machine Learning', 'Supervised and unsupervised learning.'),
+(97, 12, 'AI', 'Artificial intelligence fundamentals.'),
+(98, 12, 'Deep Learning', 'Neural networks and deep learning.'),
+(99, 12, 'Big Data', 'Large-scale data processing.'),
+(100, 12, 'Cloud Computing', 'Cloud platforms and distributed services.'),
+(101, 13, 'Linear Algebra', 'Vector spaces, matrices, and transformations.'),
+(102, 13, 'Calculus', 'Differential and integral calculus.'),
+(103, 13, 'Complex Analysis', 'Complex functions and integration.'),
+(104, 13, 'Real Analysis', 'Sequences, series, limits, and continuity.'),
+(105, 13, 'Differential Equations', 'ODE and PDE basics.'),
+(106, 13, 'Probability', 'Probability theory.'),
+(107, 13, 'Statistics', 'Statistical methods.'),
+(108, 14, 'Classical Mechanics', 'Newtonian and analytical mechanics.'),
+(109, 14, 'Quantum Mechanics', 'Quantum theory and applications.'),
+(110, 14, 'Electromagnetism', 'Electricity, magnetism, and Maxwell equations.'),
+(111, 14, 'Thermodynamics', 'Thermodynamics and statistical physics.'),
+(112, 14, 'Optics', 'Geometrical and wave optics.'),
+(113, 14, 'Nuclear Physics', 'Nuclear structure and reactions.'),
+(114, 15, 'Probability', 'Probability models and distributions.'),
+(115, 15, 'Statistical Inference', 'Estimation and hypothesis testing.'),
+(116, 15, 'Regression Analysis', 'Regression models and diagnostics.'),
+(117, 15, 'Time Series', 'Time-series modeling and forecasting.'),
+(118, 15, 'Sampling Theory', 'Survey sampling and estimators.'),
+(119, 15, 'Operations Research', 'Optimization and decision models.'),
+(120, 16, 'Architecture Design', 'Architectural design principles.'),
+(121, 16, 'Urban Planning', 'Planning principles and urban systems.'),
+(122, 16, 'Building Materials', 'Materials and construction.'),
+(123, 16, 'Environmental Planning', 'Sustainable and environmental planning.'),
+(124, 16, 'Landscape Design', 'Landscape architecture and design.'),
+(125, 17, 'Ecology', 'Ecological principles and systems.'),
+(126, 17, 'Evolution', 'Evolutionary biology.'),
+(127, 17, 'Genetics', 'Genetic diversity and inheritance.'),
+(128, 17, 'Biodiversity', 'Biodiversity and ecosystems.'),
+(129, 17, 'Conservation Biology', 'Conservation principles.'),
+(130, 17, 'Environmental Science', 'Environmental systems and issues.'),
+(131, 18, 'Surveying', 'Surveying methods and measurements.'),
+(132, 18, 'GIS', 'Geographic information systems.'),
+(133, 18, 'Remote Sensing', 'Remote sensing methods.'),
+(134, 18, 'GPS', 'GNSS and positioning.'),
+(135, 18, 'Photogrammetry', 'Photogrammetric mapping.'),
+(136, 18, 'Cartography', 'Map design and representation.'),
+(137, 19, 'Mining Methods', 'Surface and underground mining.'),
+(138, 19, 'Rock Mechanics', 'Rock behavior and support.'),
+(139, 19, 'Mine Ventilation', 'Ventilation and mine atmosphere.'),
+(140, 19, 'Mineral Processing', 'Processing and beneficiation.'),
+(141, 19, 'Mine Safety', 'Safety systems and regulations.'),
+(142, 20, 'Physical Metallurgy', 'Microstructure and phase transformations.'),
+(143, 20, 'Thermodynamics', 'Metallurgical thermodynamics.'),
+(144, 20, 'Corrosion Engineering', 'Corrosion mechanisms and protection.'),
+(145, 20, 'Material Science', 'Materials structure and properties.'),
+(146, 20, 'Heat Treatment', 'Heat treatment processes.'),
+(147, 21, 'Ship Design', 'Ship design principles.'),
+(148, 21, 'Marine Structures', 'Structural analysis of marine systems.'),
+(149, 21, 'Hydrodynamics', 'Marine fluid dynamics.'),
+(150, 21, 'Marine Engines', 'Marine propulsion engines.'),
+(151, 21, 'Ocean Engineering', 'Offshore and ocean systems.'),
+(152, 22, 'Reservoir Engineering', 'Reservoir behavior and modeling.'),
+(153, 22, 'Drilling Engineering', 'Drilling methods and equipment.'),
+(154, 22, 'Production Engineering', 'Oil and gas production systems.'),
+(155, 22, 'Petroleum Geology', 'Geology for petroleum systems.'),
+(156, 22, 'Well Testing', 'Well testing and interpretation.'),
+(157, 23, 'Textile Fibres', 'Textile fibre science.'),
+(158, 23, 'Yarn Manufacturing', 'Yarn production methods.'),
+(159, 23, 'Textile Chemistry', 'Chemical processing of textiles.'),
+(160, 23, 'Garment Technology', 'Garment production and technology.'),
+(161, 23, 'Polymer Science', 'Polymer materials for textiles.'),
+(162, 24, 'Manufacturing Processes', 'Manufacturing methods.'),
+(163, 24, 'Operations Research', 'Optimization for production systems.'),
+(164, 24, 'Quality Control', 'Quality tools and control.'),
+(165, 24, 'Production Planning', 'Planning and scheduling.'),
+(166, 24, 'Supply Chain Management', 'Supply chain and logistics.'),
+(167, 25, 'Biochemistry', 'Biochemical foundations.'),
+(168, 25, 'Botany', 'Plant biology.'),
+(169, 25, 'Zoology', 'Animal biology.'),
+(170, 25, 'Microbiology', 'Microbial biology.'),
+(171, 25, 'Biotechnology', 'Biotechnology concepts.'),
+(172, 25, 'Molecular Biology', 'Molecules and gene expression.'),
+(173, 26, 'Environmental Chemistry', 'Chemistry of environmental systems.'),
+(174, 26, 'Water Treatment', 'Water and wastewater treatment.'),
+(175, 26, 'Air Pollution', 'Air quality and pollution control.'),
+(176, 26, 'Solid Waste Management', 'Waste management systems.'),
+(177, 26, 'Climate Change', 'Climate science and impacts.'),
+(178, 27, 'Farm Machinery', 'Agricultural machines and power.'),
+(179, 27, 'Soil Science', 'Soil properties and management.'),
+(180, 27, 'Irrigation Engineering', 'Irrigation and drainage.'),
+(181, 27, 'Food Processing', 'Processing and preservation.'),
+(182, 27, 'Crop Production', 'Crop systems and production.'),
+(183, 28, 'Human Anatomy', 'Anatomy for biomedical engineering.'),
+(184, 28, 'Biomedical Instruments', 'Biomedical measurement instruments.'),
+(185, 28, 'Medical Imaging', 'Imaging methods and systems.'),
+(186, 28, 'Biomaterials', 'Materials for biomedical use.'),
+(187, 28, 'Biomechanics', 'Mechanics of biological systems.'),
+(188, 29, 'Cognitive Psychology', 'Cognition and mental processes.'),
+(189, 29, 'Social Psychology', 'Social behavior and cognition.'),
+(190, 29, 'Clinical Psychology', 'Clinical assessment and disorders.'),
+(191, 29, 'Learning & Memory', 'Learning processes and memory.'),
+(192, 29, 'Counseling', 'Counseling theory and practice.');
 
-INSERT IGNORE INTO topics (id, subject_id, name, slug, difficulty, expected_hours, display_order) VALUES
-(1, 1, 'Linear Algebra', 'linear-algebra', 'medium', 8.00, 1),
-(2, 1, 'Probability', 'probability', 'medium', 6.00, 2),
-(3, 2, 'Complexity Analysis', 'complexity-analysis', 'easy', 4.00, 1),
-(4, 2, 'Dynamic Programming', 'dynamic-programming', 'hard', 10.00, 2),
-(5, 3, 'CPU Scheduling', 'cpu-scheduling', 'medium', 6.00, 1),
-(6, 3, 'Memory Management', 'memory-management', 'hard', 8.00, 2),
-(7, 4, 'Transport Layer', 'transport-layer', 'medium', 6.00, 1),
-(8, 5, 'Normalization', 'normalization', 'medium', 5.00, 1);
+INSERT IGNORE INTO topics (id, subject_id, topic_name, difficulty) VALUES
+(1, 1, 'Linear Algebra', 'medium'),
+(2, 1, 'Probability', 'medium'),
+(3, 5, 'Complexity Analysis', 'easy'),
+(4, 5, 'Dynamic Programming', 'hard'),
+(5, 8, 'CPU Scheduling', 'medium'),
+(6, 8, 'Memory Management', 'hard'),
+(7, 10, 'Transport Layer', 'medium'),
+(8, 9, 'Normalization', 'medium');
 
-INSERT IGNORE INTO courses (id, program_id, title, subtitle, description, level, created_by) VALUES
-(1, 1, 'GATE CS Foundation Sprint', 'Build the base before mocks', 'A structured foundation course covering math, algorithms, OS, CN, DBMS, and core CS topics.', 'foundation', 2),
-(2, 1, 'Mock Test and Analysis Track', 'Practice, analyze, improve', 'Mini mocks, PYQs, and analytics-driven revision for score improvement.', 'intermediate', 2);
+INSERT IGNORE INTO resources (id, subject_id, topic_id, title, resource_type, resource_url, is_free, uploaded_by) VALUES
+(1, 1, 1, 'Linear Algebra Quick Notes', 'notes', 'https://nptel.ac.in/courses', TRUE, 2),
+(2, 5, 4, 'Dynamic Programming Practice Set', 'article', 'https://www.geeksforgeeks.org/dynamic-programming/', TRUE, 2),
+(3, 10, 7, 'TCP/IP Video Lectures', 'video', 'https://nptel.ac.in/courses', TRUE, 2),
+(4, 8, 5, 'Process Scheduling Notes', 'pdf', 'https://gateoverflow.in/', TRUE, 2),
+(5, 9, 8, 'Normalization PYQ Revision', 'practice', 'https://gateoverflow.in/', TRUE, 2);
 
-INSERT IGNORE INTO lessons (id, course_id, topic_id, title, lesson_type, content_url, duration_minutes, display_order, is_free) VALUES
-(1, 1, 1, 'Linear Algebra Revision Notes', 'reading', 'https://nptel.ac.in/courses', 35, 1, TRUE),
-(2, 1, 3, 'Time Complexity Patterns', 'video', 'https://nptel.ac.in/courses', 28, 2, TRUE),
-(3, 1, 5, 'CPU Scheduling Concepts', 'reading', 'https://gateoverflow.in/', 40, 3, TRUE),
-(4, 2, 4, 'Dynamic Programming Practice Drill', 'practice', 'https://www.geeksforgeeks.org/dynamic-programming/', 50, 1, TRUE);
+INSERT IGNORE INTO tests (id, test_title, branch_id, subject_id, test_type, duration_minutes, total_marks, created_by) VALUES
+(1, 'GATE CS Real Pattern Demo Mock', 1, NULL, 'full_mock', 180, 100, 2),
+(2, 'Core CS Sectional Practice', 1, 5, 'sectional', 45, 4, 2);
 
-INSERT IGNORE INTO enrollments (id, user_id, course_id, progress_percent) VALUES
-(1, 1, 1, 34.00),
-(2, 1, 2, 12.00);
+INSERT IGNORE INTO questions
+(id, test_id, subject_id, topic_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, explanation, marks, negative_marks, difficulty) VALUES
+(1, 1, 5, 3, 'What is the time complexity of binary search on a sorted array of n elements?', 'mcq', 'O(n)', 'O(log n)', 'O(n log n)', 'O(1)', 'B', 'Binary search halves the search interval after each comparison, so it needs logarithmic comparisons.', 1, 0.33, 'easy'),
+(2, 1, 8, 5, 'Which scheduling algorithm may cause starvation?', 'mcq', 'Round Robin', 'FCFS', 'Priority Scheduling', 'SJF with aging', 'C', 'Low priority processes may wait indefinitely when higher priority jobs keep arriving.', 1, 0.33, 'medium'),
+(3, 1, 9, 8, 'Which normal form removes transitive dependency?', 'mcq', '1NF', '2NF', '3NF', 'BCNF only', 'C', 'Third normal form requires non-prime attributes to depend only on candidate keys.', 1, 0.33, 'medium'),
+(4, 1, 10, 7, 'TCP provides which of the following?', 'mcq', 'Unreliable datagrams', 'Connection-oriented reliable byte stream', 'No flow control', 'Only multicast delivery', 'B', 'TCP is connection-oriented and provides reliable, ordered byte-stream delivery with flow and congestion control.', 2, 0.66, 'easy'),
+(5, 1, 1, 1, 'If a square matrix has determinant zero, what can be concluded?', 'mcq', 'It is invertible', 'Rows are linearly independent', 'It is singular', 'All eigenvalues are one', 'C', 'A zero determinant means the matrix is singular and does not have an inverse.', 1, 0.33, 'easy'),
+(6, 1, 8, 6, 'Select all statements that are true for virtual memory.', 'msq', 'It uses address translation', 'It can use demand paging', 'It requires every process to fit entirely in RAM', 'It can increase apparent memory available to programs', 'A,B,D', 'Virtual memory translates addresses, commonly uses demand paging, and lets programs see a larger address space than physical RAM.', 2, 0, 'medium'),
+(7, 1, 1, 2, 'A fair coin is tossed 3 times. Enter the number of outcomes with exactly two heads.', 'nat', NULL, NULL, NULL, NULL, '3', 'The favorable outcomes are HHT, HTH, and THH, so the numerical answer is 3.', 2, 0, 'easy'),
+(8, 1, 5, 4, 'Which of the following are valid dynamic programming properties?', 'msq', 'Overlapping subproblems', 'Optimal substructure', 'Always greedy choice', 'Memoization or tabulation can be used', 'A,B,D', 'DP is useful when overlapping subproblems and optimal substructure exist; it is implemented with memoization or tabulation.', 2, 0, 'medium'),
+(9, 2, 5, 3, 'What is the recurrence relation idea behind binary search?', 'mcq', 'T(n)=T(n-1)+1', 'T(n)=T(n/2)+1', 'T(n)=2T(n/2)+n', 'T(n)=T(n)+1', 'B', 'Binary search solves one half-size subproblem after one comparison.', 1, 0.33, 'easy');
 
-INSERT IGNORE INTO resources (id, subject, topic_id, title, description, type, url, difficulty, provider, estimated_minutes, uploaded_by) VALUES
-(1, 'Engineering Mathematics', 1, 'Linear Algebra Quick Notes', 'Rank-focused formulas and solved examples for fast revision.', 'notes', 'https://nptel.ac.in/courses', 'beginner', 'NPTEL', 45, 2),
-(2, 'Algorithms', 4, 'Dynamic Programming Practice Set', 'Pattern-wise DP problems for GATE practice.', 'article', 'https://www.geeksforgeeks.org/dynamic-programming/', 'intermediate', 'GeeksforGeeks', 60, 2),
-(3, 'Computer Networks', 7, 'TCP/IP Video Lectures', 'Concept lectures for transport layer and TCP behavior.', 'video', 'https://nptel.ac.in/courses', 'beginner', 'NPTEL', 90, 2),
-(4, 'Operating Systems', 5, 'Process Scheduling Notes', 'Concise notes for CPU scheduling algorithms and starvation.', 'pdf', 'https://gateoverflow.in/', 'intermediate', 'GATE Overflow', 40, 2),
-(5, 'Databases', 8, 'Normalization PYQ Revision', 'Short revision for dependencies and normal forms.', 'practice', 'https://gateoverflow.in/', 'intermediate', 'GATE Overflow', 35, 2);
+INSERT IGNORE INTO user_progress (id, user_id, subject_id, completed_topics, total_topics, progress_percentage) VALUES
+(1, 1, 1, 1, 2, 50.00),
+(2, 1, 5, 1, 2, 50.00),
+(3, 1, 8, 1, 2, 50.00);
 
-INSERT IGNORE INTO questions (id, subject, topic, topic_id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, difficulty, marks, negative_marks, source, year, created_by) VALUES
-(1, 'Algorithms', 'Complexity', 3, 'What is the time complexity of binary search on a sorted array of n elements?', 'O(n)', 'O(log n)', 'O(n log n)', 'O(1)', 'B', 'Binary search halves the search interval after each comparison, so it needs logarithmic comparisons.', 'easy', 1, 0, 'mock', NULL, 2),
-(2, 'Operating Systems', 'Scheduling', 5, 'Which scheduling algorithm may cause starvation?', 'Round Robin', 'FCFS', 'Priority Scheduling', 'SJF with aging', 'C', 'Low priority processes may wait indefinitely when higher priority jobs keep arriving.', 'medium', 1, 0, 'mock', NULL, 2),
-(3, 'Databases', 'SQL', 8, 'Which normal form removes transitive dependency?', '1NF', '2NF', '3NF', 'BCNF only', 'C', 'Third normal form requires non-prime attributes to depend only on candidate keys.', 'medium', 1, 0, 'pyq', 2023, 2),
-(4, 'Computer Networks', 'Transport Layer', 7, 'TCP provides which of the following?', 'Unreliable datagrams', 'Connection-oriented reliable byte stream', 'No flow control', 'Only multicast delivery', 'B', 'TCP is connection-oriented and provides reliable, ordered byte-stream delivery with flow and congestion control.', 'easy', 1, 0, 'pyq', 2022, 2),
-(5, 'Engineering Mathematics', 'Linear Algebra', 1, 'If a square matrix has determinant zero, what can be concluded?', 'It is invertible', 'Rows are linearly independent', 'It is singular', 'All eigenvalues are one', 'C', 'A zero determinant means the matrix is singular and does not have an inverse.', 'easy', 1, 0, 'practice', NULL, 2);
-
-INSERT IGNORE INTO tests (id, title, subject, description, test_type, duration_minutes, total_marks, passing_score, created_by) VALUES
-(1, 'GATE CS Mini Mock 1', 'Computer Science', 'A quick diagnostic mock covering algorithms, OS, DBMS, CN, and mathematics.', 'mini_mock', 30, 5, 3, 2),
-(2, 'Core CS Sectional Practice', 'Computer Science', 'Topic-mixed sectional practice for common GATE CS weak areas.', 'sectional', 45, 4, 2, 2);
-
-INSERT IGNORE INTO test_questions (test_id, question_id, display_order) VALUES
-(1, 1, 1),
-(1, 2, 2),
-(1, 3, 3),
-(1, 4, 4),
-(1, 5, 5),
-(2, 1, 1),
-(2, 2, 2),
-(2, 3, 3),
-(2, 4, 4);
-
-INSERT IGNORE INTO study_plans (id, user_id, title, target_date, daily_hours, weak_subjects, plan_json) VALUES
-(1, 1, 'GATE CS 90-Day Improvement Plan', '2027-02-08', 4.00, JSON_OBJECT('Operating Systems', 4, 'Engineering Mathematics', 3), JSON_OBJECT('weeklyGoal', 'Finish weak topics, attempt one mini mock, revise mistakes'));
-
-INSERT IGNORE INTO study_tasks (id, study_plan_id, user_id, subject_id, topic_id, title, task_type, due_date, estimated_minutes, status) VALUES
-(1, 1, 1, 3, 5, 'Revise CPU scheduling and solve 12 questions', 'practice', '2026-05-20', 60, 'pending'),
-(2, 1, 1, 1, 1, 'Revise rank, determinant, and eigenvalue formulas', 'revision', '2026-05-21', 45, 'pending'),
-(3, 1, 1, 2, 4, 'Practice dynamic programming patterns', 'practice', '2026-05-22', 75, 'pending');
-
-INSERT IGNORE INTO announcements (id, title, body, audience, created_by) VALUES
-(1, 'New weekly mock schedule', 'Attempt one mini mock every Sunday and review weak topics before moving to the next subject.', 'students', 2);
+INSERT IGNORE INTO activity_logs (id, user_id, activity_type, activity_description) VALUES
+(1, 1, 'welcome', 'Demo student account created with seeded GATE preparation data.');

@@ -25,13 +25,7 @@ GATE_SCORE is a full-stack Gen AI web app for GATE preparation. It includes stud
    mysql -u root -p < database/schema.sql
    ```
 
-   If you already created the `gate_score` database in MySQL Workbench, upgrade it to the professional learning-platform schema:
-
-   ```bash
-   mysql -u root -p gate_score < database/upgrade_professional_learning_platform.sql
-   ```
-
-   The upgrade adds courses, lessons, enrollments, study plans, study tasks, doubt history, announcements, richer resources, richer tests, and analytics-ready submission data.
+   This script rebuilds the `gate_score` database into the project schema: users, branches, subjects, topics, resources, tests, questions, test attempts, student answers, AI chat history, AI study plans, progress, bookmarks, and activity logs.
 
 3. Copy environment variables:
 
@@ -64,24 +58,26 @@ Backend: `http://localhost:5001`
 ```text
 gate_score/
 ├── frontend/
+│   ├── public/
+│   │   └── images/         # Public image assets
 │   └── src/
+│       ├── assets/         # Local app assets and banners
 │       ├── components/     # Reusable UI pieces
-│       ├── data/           # Demo/sample frontend data
+│       ├── context/        # React context providers
+│       ├── data/           # Demo/sample frontend data and menu config
+│       ├── layouts/        # App shell layouts
+│       ├── pages/          # Route-level page components
 │       ├── services/       # API client helpers
-│       ├── main.jsx        # Page shell and page views
-│       └── styles.css
+│       ├── App.jsx         # Frontend app orchestration
+│       ├── main.jsx        # React mount
+│       └── index.css       # Global styles
 ├── backend/
+│   ├── config/             # DB, upload, and AI provider helpers
+│   ├── controllers/        # Request handlers
+│   ├── middleware/         # Auth middleware
+│   ├── routes/             # API route definitions
 │   ├── uploads/            # Uploaded resource files
-│   └── src/
-│       ├── config/         # Multer and app config helpers
-│       ├── controllers/    # Request handlers
-│       ├── middleware/     # Express middleware
-│       ├── routes/         # API route definitions
-│       ├── ai.js           # AI provider wrapper
-│       ├── app.js          # Express app setup
-│       ├── auth.js         # JWT middleware/helpers
-│       ├── db.js           # MySQL pool
-│       └── index.js        # Server entry point
+│   └── server.js           # Express server entry point
 ├── database/
 │   └── schema.sql          # MySQL schema and seed data
 ├── package.json
@@ -106,7 +102,16 @@ POST /api/ai/study-plan
 POST /api/ai/generate-questions
 POST /api/ai/explain-answer
 
+GET  /api/learning/courses
+GET  /api/learning/courses/:id
+POST /api/learning/courses/:id/enroll
+PATCH /api/learning/lessons/:lessonId/progress
+GET  /api/learning/tasks
+PATCH /api/learning/tasks/:taskId
+GET  /api/learning/recommendations
+
 GET  /api/dashboard
+GET  /api/predict-score
 ```
 
 `POST /api/tests/submit` expects a JSON body like:
